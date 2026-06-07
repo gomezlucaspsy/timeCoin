@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "crates/economy-lib",
+    "services/timecoin-api",
+]
+resolver = "2"
