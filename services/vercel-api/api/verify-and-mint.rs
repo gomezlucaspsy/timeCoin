@@ -1,7 +1,9 @@
 use economy_lib::{decide_mint, EconomyParams, WorkEvidence};
-use serde::{Deserialize, Serialize};
+use http_body_util::BodyExt;
+use serde::Deserialize;
+use serde_json::{json, Value};
 use uuid::Uuid;
-use vercel_runtime::{run, Body, Error, Request, Response, StatusCode};
+use vercel_runtime::{run, service_fn, Error, Request, Response};
 
 #[derive(Debug, Deserialize)]
 struct VerifyRequest {
@@ -11,35 +13,20 @@ struct VerifyRequest {
     attestation_score: f64,
 }
 
-#[derive(Debug, Serialize)]
-struct VerifyResponse {
-    approved: bool,
-    reason: String,
-    hour_token_id: Option<Uuid>,
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    run(handler).await
+    run(service_fn(handler)).await
 }
 
-pub async fn handler(req: Request) -> Result<Response<Body>, Error> {
-    let bytes: &[u8] = match req.body() {
-        Body::Text(s) => s.as_bytes(),
-        Body::Binary(b) => b.as_slice(),
-        Body::Empty => &[],
-    };
+pub async fn handler(req: Request) -> Result<Response<Value>, Error> {
+    let bytes = req.into_body().collect().await?.to_bytes();
 
-    let payload: VerifyRequest = match serde_json::from_slice(bytes) {
+    let payload: VerifyRequest = match serde_json::from_slice(&bytes) {
         Ok(p) => p,
         Err(_) => {
             return Ok(Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .header("content-type", "application/json")
-                .body(Body::Text(
-                    serde_json::json!({ "approved": false, "reason": "invalid JSON body" })
-                        .to_string(),
-                ))?)
+                .status(400)
+                .body(json!({ "approved": false, "reason": "invalid JSON body" }))?)
         }
     };
 
@@ -57,19 +44,14 @@ pub async fn handler(req: Request) -> Result<Response<Body>, Error> {
     let decision = decide_mint(&EconomyParams::default(), &evidence);
 
     let (status, hour_token_id) = if decision.approved {
-        (StatusCode::OK, Some(Uuid::new_v4()))
+        (200, Some(Uuid::new_v4()))
     } else {
-        (StatusCode::UNPROCESSABLE_ENTITY, None)
+        (422, None)
     };
 
-    let response = VerifyResponse {
-        approved: decision.approved,
-        reason: decision.reason,
-        hour_token_id,
-    };
-
-    Ok(Response::builder()
-        .status(status)
-        .header("content-type", "application/json")
-        .body(Body::Text(serde_json::to_string(&response)?))?)
+    Ok(Response::builder().status(status).body(json!({
+        "approved": decision.approved,
+        "reason": decision.reason,
+        "hour_token_id": hour_token_id,
+    }))?)
 }

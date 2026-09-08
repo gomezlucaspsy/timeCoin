@@ -1,13 +1,10 @@
-use vercel_runtime::{run, Body, Error, Request, Response, StatusCode};
+use vercel_runtime::{run, service_fn, Error, Request};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    run(handler).await
+    run(service_fn(handler)).await
 }
 
-pub async fn handler(_req: Request) -> Result<Response<Body>, Error> {
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header("content-type", "text/plain")
-        .body(Body::Text("ok".to_string()))?)
+pub async fn handler(_req: Request) -> Result<&'static str, Error> {
+    Ok("ok")
 }

@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    "crates/economy-lib",
     "services/timecoin-api",
     "services/vercel-api",
+    "services/vercel-api/economy-lib",
 ]
 resolver = "2"
 
