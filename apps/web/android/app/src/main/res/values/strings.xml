@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TimeCoin</string>
+    <string name="title_activity_main">TimeCoin</string>
+    <string name="package_name">com.timecoin.app</string>
+    <string name="custom_url_scheme">com.timecoin.app</string>
+</resources>

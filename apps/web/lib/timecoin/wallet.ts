@@ -2,6 +2,7 @@ import { generateKeyPair, publicKeyFromPrivate, addressFromPublicKey, toHex, fro
 import { generateSeedPhrase, isValidSeedPhrase, privateKeyFromSeedPhrase } from "./mnemonic";
 import { signTransaction, Transaction, TxOutput } from "./transaction";
 import type { Utxo } from "./client";
+import { isNativePlatform, saveWalletSecret, loadWalletSecret } from "./secureStorage";
 
 export interface WalletKeys {
   privateKeyHex: string;
@@ -38,10 +39,27 @@ export function walletFromSeedPhrase(seedPhrase: string): WalletKeys {
 }
 
 function persist(wallet: WalletKeys): void {
-  const record = wallet.seedPhrase
-    ? { seedPhrase: wallet.seedPhrase }
-    : { privateKeyHex: wallet.privateKeyHex };
+  const secret = wallet.seedPhrase ?? wallet.privateKeyHex;
+  const record = wallet.seedPhrase ? { seedPhrase: secret } : { privateKeyHex: secret };
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+
+  // En el build nativo (Capacitor), el secreto también se guarda en el Keychain/Keystore
+  // del OS, detrás de biometría — localStorage del WebView queda solo como fallback.
+  if (isNativePlatform()) {
+    void saveWalletSecret(secret);
+  }
+}
+
+/**
+ * Build nativo únicamente: pide Face ID / huella y trae el secreto guardado en el
+ * Keychain/Keystore. Devuelve null si el usuario cancela o todavía no hay nada guardado
+ * (primer uso — en ese caso seguí con `loadOrCreateWallet`, que sembrará el secure storage).
+ */
+export async function unlockNativeWallet(): Promise<WalletKeys | null> {
+  if (!isNativePlatform()) return null;
+  const secret = await loadWalletSecret("Desbloqueá tu wallet TimeCoin para continuar");
+  if (!secret) return null;
+  return isValidSeedPhrase(secret) ? walletFromSeedPhrase(secret) : walletFromPrivateKey(secret);
 }
 
 /** localStorage-backed wallet: keys never leave this browser. */
@@ -69,6 +87,13 @@ export function loadOrCreateWallet(): WalletKeys {
 export function importWallet(input: string): WalletKeys {
   const trimmed = input.trim();
   const wallet = isValidSeedPhrase(trimmed) ? walletFromSeedPhrase(trimmed) : walletFromPrivateKey(trimmed);
+  persist(wallet);
+  return wallet;
+}
+
+/** Generates a brand-new seed-phrase wallet and overwrites whatever was stored. */
+export function createNewSeedWallet(): WalletKeys {
+  const wallet = walletFromSeedPhrase(generateSeedPhrase());
   persist(wallet);
   return wallet;
 }
