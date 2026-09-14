@@ -74,7 +74,7 @@ export default function InstallQR() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="fixed right-4 top-4 z-40 rounded-full border border-black/[.08] bg-white/90 px-4 py-2 text-xs font-medium tracking-tight text-foreground shadow-sm backdrop-blur transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black/70 dark:hover:bg-white/[.08]"
+        className="fixed bottom-4 right-4 z-40 rounded-full border border-black/[.08] bg-white/90 px-4 py-2 text-xs font-medium tracking-tight text-foreground shadow-sm backdrop-blur transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black/70 dark:hover:bg-white/[.08]"
       >
         {installed ? "Compartir app" : "Instalar app"}
       </button>

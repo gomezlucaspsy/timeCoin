@@ -13,7 +13,7 @@ export default function NavTabs() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center gap-1">
+    <nav className="order-3 flex w-full flex-wrap items-center justify-center gap-1 sm:order-none sm:w-auto sm:justify-start">
       {TABS.map((tab) => {
         const active =
           pathname === tab.href || pathname.startsWith(`${tab.href}/`);
@@ -21,7 +21,7 @@ export default function NavTabs() {
           <Link
             key={tab.href}
             href={tab.href}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors ${
               active
                 ? "bg-foreground text-background"
                 : "text-zinc-600 hover:bg-black/[.04] dark:text-zinc-400 dark:hover:bg-white/[.08]"
