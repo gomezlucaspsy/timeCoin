@@ -1,4 +1,5 @@
 import { generateKeyPair, publicKeyFromPrivate, addressFromPublicKey, toHex, fromHex } from "./crypto";
+import { generateSeedPhrase, isValidSeedPhrase, privateKeyFromSeedPhrase } from "./mnemonic";
 import { signTransaction, Transaction, TxOutput } from "./transaction";
 import type { Utxo } from "./client";
 
@@ -6,26 +7,44 @@ export interface WalletKeys {
   privateKeyHex: string;
   publicKeyHex: string;
   address: string;
+  /** Present only for seed-phrase wallets — the recommended backup, not the raw key. */
+  seedPhrase?: string;
 }
 
 const STORAGE_KEY = "timecoin:wallet:v1";
 
-export function createWallet(): WalletKeys {
-  const { privateKey, publicKey } = generateKeyPair();
+function keysFromPrivateKey(privateKey: Uint8Array, seedPhrase?: string): WalletKeys {
+  const publicKey = publicKeyFromPrivate(privateKey);
   return {
     privateKeyHex: toHex(privateKey),
     publicKeyHex: toHex(publicKey),
     address: addressFromPublicKey(publicKey),
+    seedPhrase,
   };
 }
 
-export function walletFromPrivateKey(privateKeyHex: string): WalletKeys {
-  const privateKey = fromHex(privateKeyHex);
-  const publicKey = publicKeyFromPrivate(privateKey);
-  return { privateKeyHex, publicKeyHex: toHex(publicKey), address: addressFromPublicKey(publicKey) };
+/** Legacy path: a bare secp256k1 keypair with no recoverable backup. Kept for imports only. */
+export function createWallet(): WalletKeys {
+  const { privateKey } = generateKeyPair();
+  return keysFromPrivateKey(privateKey);
 }
 
-/** localStorage-backed wallet: private key never leaves this browser. */
+export function walletFromPrivateKey(privateKeyHex: string): WalletKeys {
+  return keysFromPrivateKey(fromHex(privateKeyHex));
+}
+
+export function walletFromSeedPhrase(seedPhrase: string): WalletKeys {
+  return keysFromPrivateKey(privateKeyFromSeedPhrase(seedPhrase), seedPhrase.trim());
+}
+
+function persist(wallet: WalletKeys): void {
+  const record = wallet.seedPhrase
+    ? { seedPhrase: wallet.seedPhrase }
+    : { privateKeyHex: wallet.privateKeyHex };
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+}
+
+/** localStorage-backed wallet: keys never leave this browser. */
 export function loadOrCreateWallet(): WalletKeys {
   if (typeof window === "undefined") {
     // Server-render pass — caller must not act on this until the client effect re-runs.
@@ -34,19 +53,23 @@ export function loadOrCreateWallet(): WalletKeys {
   const saved = window.localStorage.getItem(STORAGE_KEY);
   if (saved) {
     try {
-      return walletFromPrivateKey(JSON.parse(saved).privateKeyHex);
+      const record = JSON.parse(saved) as { seedPhrase?: string; privateKeyHex?: string };
+      if (record.seedPhrase) return walletFromSeedPhrase(record.seedPhrase);
+      if (record.privateKeyHex) return walletFromPrivateKey(record.privateKeyHex);
     } catch {
       // fall through to creating a new one if storage is corrupted
     }
   }
-  const wallet = createWallet();
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ privateKeyHex: wallet.privateKeyHex }));
+  const wallet = walletFromSeedPhrase(generateSeedPhrase());
+  persist(wallet);
   return wallet;
 }
 
-export function importWallet(privateKeyHex: string): WalletKeys {
-  const wallet = walletFromPrivateKey(privateKeyHex);
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ privateKeyHex: wallet.privateKeyHex }));
+/** Accepts either a 12-word seed phrase or (for wallets created before this existed) a raw hex key. */
+export function importWallet(input: string): WalletKeys {
+  const trimmed = input.trim();
+  const wallet = isValidSeedPhrase(trimmed) ? walletFromSeedPhrase(trimmed) : walletFromPrivateKey(trimmed);
+  persist(wallet);
   return wallet;
 }
 
