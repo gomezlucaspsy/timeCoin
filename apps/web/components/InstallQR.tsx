@@ -15,22 +15,24 @@ type InstallPromptEvent = Event & {
 export default function InstallQR() {
   const [open, setOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
-  const [pageUrl, setPageUrl] = useState("");
+  const [pageUrl] = useState(() =>
+    typeof window === "undefined" ? "" : window.location.origin,
+  );
   const [deferredPrompt, setDeferredPrompt] = useState<InstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState(false);
+  const [installed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true
+    );
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setPageUrl(window.location.origin);
 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
     }
-
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as Navigator & { standalone?: boolean }).standalone === true;
-    setInstalled(isStandalone);
 
     const handler = (e: Event) => {
       e.preventDefault();
