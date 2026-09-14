@@ -76,14 +76,23 @@ export class Blockchain {
     return this.tip.header.difficulty;
   }
 
-  nextDifficulty(): number {
+  nextDifficulty(candidateTimestamp: number = Date.now()): number {
     const h = this.height + 1;
     const interval = this.params.difficultyAdjustmentIntervalBlocks;
-    if (h % interval !== 0) return this.currentDifficulty();
+    const scheduled = (() => {
+      if (h % interval !== 0) return this.currentDifficulty();
+      const epochStart = this.chain[this.chain.length - interval];
+      const actualSeconds = (this.tip.header.timestamp - epochStart.header.timestamp) / 1000;
+      return retargetDifficulty(this.currentDifficulty(), actualSeconds, this.params);
+    })();
 
-    const epochStart = this.chain[this.chain.length - interval];
-    const actualSeconds = (this.tip.header.timestamp - epochStart.header.timestamp) / 1000;
-    return retargetDifficulty(this.currentDifficulty(), actualSeconds, this.params);
+    if (this.params.allowMinDifficultyOnStall) {
+      const gapSeconds = (candidateTimestamp - this.tip.header.timestamp) / 1000;
+      if (gapSeconds > 2 * this.params.targetBlockTimeSeconds) {
+        return this.params.initialDifficulty;
+      }
+    }
+    return scheduled;
   }
 
   private rebuildUtxoSet(): void {
@@ -176,7 +185,8 @@ export class Blockchain {
   /** Assemble a mineable block template from the current mempool for the given miner address. */
   prepareBlockTemplate(minerAddress: string): { template: Omit<BlockHeader, "nonce">; transactions: Transaction[]; target: bigint } {
     const height = this.height + 1;
-    const difficulty = this.nextDifficulty();
+    const timestamp = Date.now();
+    const difficulty = this.nextDifficulty(timestamp);
     const target = targetFromDifficulty(difficulty, this.params);
 
     let fees = 0n;
@@ -195,7 +205,6 @@ export class Blockchain {
     }
 
     const reward = blockReward(height, this.params) + fees;
-    const timestamp = Date.now();
     const coinbase = buildCoinbaseTx(minerAddress, reward, timestamp, height);
     const transactions = [coinbase, ...included];
     const template = buildBlockTemplate(height, this.tip.hash, transactions, difficulty, timestamp);
@@ -232,7 +241,8 @@ export class Blockchain {
     if (!isBlockHashValid(block)) {
       return { valid: false, reason: "Stored hash does not match recomputed header hash" };
     }
-    const expectedDifficulty = block.header.height === this.height + 1 ? this.nextDifficulty() : block.header.difficulty;
+    const expectedDifficulty =
+      block.header.height === this.height + 1 ? this.nextDifficulty(block.header.timestamp) : block.header.difficulty;
     if (Math.abs(block.header.difficulty - expectedDifficulty) > 1e-6) {
       return { valid: false, reason: "Unexpected difficulty for this height" };
     }

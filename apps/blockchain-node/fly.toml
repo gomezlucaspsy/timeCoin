@@ -1,0 +1,23 @@
+app = "timecoin-node"
+primary_region = "gru"
+
+[build]
+
+[env]
+  PORT = "8080"
+  TIMECOIN_DATA_PATH = "/data/chain.json"
+
+[[mounts]]
+  source = "timecoin_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
