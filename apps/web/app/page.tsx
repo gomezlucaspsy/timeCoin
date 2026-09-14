@@ -31,7 +31,7 @@ export default function Home() {
         </h1>
         <p className="max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
           Publicá y vendé directo a otros usuarios. Cobrá con pesos o con
-          horas TimeCoin verificadas — vos elegís qué aceptar.
+          TimeCoin, minada por prueba de trabajo — vos elegís qué aceptar.
         </p>
         <div className="flex flex-col gap-4 pt-4 sm:flex-row">
           <Link
