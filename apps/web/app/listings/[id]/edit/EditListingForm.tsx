@@ -141,8 +141,9 @@ export default function EditListingForm({ listing }: { listing: Listing }) {
               id="priceHours"
               name="priceHours"
               type="number"
-              min={0.00000001}
-              step={0.00000001}
+              inputMode="decimal"
+              min={0.01}
+              step="any"
               required
               defaultValue={listing.priceHours ?? undefined}
               className="rounded-lg border border-black/[.08] bg-transparent px-3 py-2 text-sm outline-none focus:border-black/30 dark:border-white/[.145] dark:focus:border-white/40"
