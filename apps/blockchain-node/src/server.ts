@@ -85,7 +85,13 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && parts[0] === "balance" && parts.length === 2) {
       const address = parts[1];
       if (!isValidAddress(address)) return send(res, 400, { error: "Invalid address" });
-      send(res, 200, { address, balance: chain.getBalance(address).toString() });
+      const pending = chain.getPendingBalance(address);
+      send(res, 200, {
+        address,
+        balance: chain.getBalance(address).toString(),
+        pending: pending.amount.toString(),
+        pendingMaturesInBlocks: pending.maturesInBlocks,
+      });
       return;
     }
 
