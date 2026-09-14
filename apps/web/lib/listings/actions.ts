@@ -1,37 +1,35 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { put } from "@vercel/blob";
+import { del, put } from "@vercel/blob";
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db";
-import { listings } from "@/lib/db/schema";
+import { listings, type Listing } from "@/lib/db/schema";
 import { LISTING_CATEGORIES } from "@/lib/listings/categories";
 
 const MAX_IMAGES = 6;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
-export type CreateListingState = {
-  error: string | null;
+type ListingFields = {
+  title: string;
+  description: string;
+  category: string;
+  paymentMode: "cash" | "timecoin" | "both";
+  priceArs: number | null;
+  priceHours: number | null;
 };
 
-export async function createListing(
-  _prevState: CreateListingState,
+function validateFields(
   formData: FormData,
-): Promise<CreateListingState> {
-  const { userId } = await auth();
-  if (!userId) {
-    return { error: "Tenés que iniciar sesión para publicar." };
-  }
-
+): { error: string } | { error: null; fields: ListingFields } {
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim();
   const paymentMode = String(formData.get("paymentMode") ?? "").trim();
   const priceArsRaw = String(formData.get("priceArs") ?? "").trim();
   const priceHoursRaw = String(formData.get("priceHours") ?? "").trim();
-  const images = formData
-    .getAll("images")
-    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
   if (title.length < 3 || title.length > 120) {
     return { error: "El título debe tener entre 3 y 120 caracteres." };
@@ -55,6 +53,45 @@ export async function createListing(
   if (paymentMode !== "cash" && (!priceHours || priceHours <= 0)) {
     return { error: "Ingresá un precio en horas TimeCoin válido." };
   }
+
+  return {
+    error: null,
+    fields: { title, description, category, paymentMode, priceArs, priceHours },
+  };
+}
+
+async function requireOwnedListing(id: string, userId: string): Promise<Listing | null> {
+  const db = getDb();
+  const [listing] = await db
+    .select()
+    .from(listings)
+    .where(eq(listings.id, id))
+    .limit(1);
+  if (!listing || listing.sellerId !== userId) return null;
+  return listing;
+}
+
+export type CreateListingState = {
+  error: string | null;
+};
+
+export async function createListing(
+  _prevState: CreateListingState,
+  formData: FormData,
+): Promise<CreateListingState> {
+  const { userId } = await auth();
+  if (!userId) {
+    return { error: "Tenés que iniciar sesión para publicar." };
+  }
+
+  const validated = validateFields(formData);
+  if (validated.error !== null) return { error: validated.error };
+  const { title, description, category, paymentMode, priceArs, priceHours } =
+    validated.fields;
+
+  const images = formData
+    .getAll("images")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
   if (images.length === 0) {
     return { error: "Subí al menos una foto del artículo." };
@@ -95,5 +132,118 @@ export async function createListing(
     })
     .returning({ id: listings.id });
 
+  revalidatePath("/listings");
   redirect(`/listings/${listing.id}?created=1`);
+}
+
+export type UpdateListingState = {
+  error: string | null;
+};
+
+export async function updateListing(
+  id: string,
+  _prevState: UpdateListingState,
+  formData: FormData,
+): Promise<UpdateListingState> {
+  const { userId } = await auth();
+  if (!userId) {
+    return { error: "Tenés que iniciar sesión para editar." };
+  }
+
+  const existing = await requireOwnedListing(id, userId);
+  if (!existing) {
+    return { error: "No podés editar este artículo." };
+  }
+
+  const validated = validateFields(formData);
+  if (validated.error !== null) return { error: validated.error };
+  const { title, description, category, paymentMode, priceArs, priceHours } =
+    validated.fields;
+
+  const keepImages = formData.getAll("keepImages").map(String);
+  const invalidKept = keepImages.filter((url) => !existing.images.includes(url));
+  if (invalidKept.length > 0) {
+    return { error: "Alguna de las fotos existentes ya no es válida." };
+  }
+
+  const newImages = formData
+    .getAll("images")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+
+  if (keepImages.length + newImages.length === 0) {
+    return { error: "Subí al menos una foto del artículo." };
+  }
+  if (keepImages.length + newImages.length > MAX_IMAGES) {
+    return { error: `Podés subir como máximo ${MAX_IMAGES} fotos.` };
+  }
+  for (const image of newImages) {
+    if (!image.type.startsWith("image/")) {
+      return { error: "Todos los archivos deben ser imágenes." };
+    }
+    if (image.size > MAX_IMAGE_BYTES) {
+      return { error: "Cada foto debe pesar menos de 5MB." };
+    }
+  }
+
+  const uploaded = await Promise.all(
+    newImages.map((image) =>
+      put(`listings/${userId}/${crypto.randomUUID()}-${image.name}`, image, {
+        access: "public",
+        addRandomSuffix: false,
+      }),
+    ),
+  );
+
+  const removedImages = existing.images.filter((url) => !keepImages.includes(url));
+  if (removedImages.length > 0) {
+    await del(removedImages).catch(() => {});
+  }
+
+  const db = getDb();
+  await db
+    .update(listings)
+    .set({
+      title,
+      description,
+      category,
+      paymentMode,
+      priceArs: priceArs ?? null,
+      priceHours: priceHours !== null ? priceHours.toFixed(8) : null,
+      images: [...keepImages, ...uploaded.map((blob) => blob.url)],
+      updatedAt: new Date(),
+    })
+    .where(eq(listings.id, id));
+
+  revalidatePath("/listings");
+  revalidatePath(`/listings/${id}`);
+  redirect(`/listings/${id}?updated=1`);
+}
+
+export type DeleteListingState = {
+  error: string | null;
+};
+
+export async function deleteListing(
+  id: string,
+): Promise<DeleteListingState> {
+  const { userId } = await auth();
+  if (!userId) {
+    return { error: "Tenés que iniciar sesión para borrar." };
+  }
+
+  const existing = await requireOwnedListing(id, userId);
+  if (!existing) {
+    return { error: "No podés borrar este artículo." };
+  }
+
+  const db = getDb();
+  await db.delete(listings).where(eq(listings.id, id));
+
+  if (existing.images.length > 0) {
+    await del(existing.images).catch(() => {});
+  }
+
+  revalidatePath("/listings");
+  revalidatePath("/listings/mine");
+  redirect("/listings/mine?deleted=1");
 }

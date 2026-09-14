@@ -6,17 +6,24 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/listings", label: "Explorar" },
   { href: "/sell", label: "Publicar" },
+  { href: "/listings/mine", label: "Mis artículos" },
   { href: "/wallet", label: "Wallet" },
 ] as const;
 
 export default function NavTabs() {
   const pathname = usePathname();
 
+  const activeHref = TABS.reduce<string | null>((best, tab) => {
+    const matches = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+    if (!matches) return best;
+    if (!best || tab.href.length > best.length) return tab.href;
+    return best;
+  }, null);
+
   return (
     <nav className="order-3 flex w-full flex-wrap items-center justify-center gap-1 sm:order-none sm:w-auto sm:justify-start">
       {TABS.map((tab) => {
-        const active =
-          pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+        const active = tab.href === activeHref;
         return (
           <Link
             key={tab.href}
