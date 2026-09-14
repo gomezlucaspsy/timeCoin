@@ -20,3 +20,12 @@ export async function getActiveListings() {
     .where(eq(listings.status, "active"))
     .orderBy(desc(listings.createdAt));
 }
+
+export async function getListingsBySeller(sellerId: string) {
+  const db = getDb();
+  return db
+    .select()
+    .from(listings)
+    .where(eq(listings.sellerId, sellerId))
+    .orderBy(desc(listings.createdAt));
+}
