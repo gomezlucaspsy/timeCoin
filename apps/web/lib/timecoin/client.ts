@@ -53,13 +53,14 @@ export interface BalanceInfo {
 }
 
 export async function getBalanceInfo(address: string): Promise<BalanceInfo> {
-  const body = await request<{ balance: string; pending: string; pendingMaturesInBlocks: number | null }>(
+  const body = await request<{ balance: string; pending?: string; pendingMaturesInBlocks?: number | null }>(
     `/balance/${address}`,
   );
+  // pending/pendingMaturesInBlocks are absent if the node hasn't been redeployed yet.
   return {
     spendable: BigInt(body.balance),
-    pending: BigInt(body.pending),
-    pendingMaturesInBlocks: body.pendingMaturesInBlocks,
+    pending: body.pending ? BigInt(body.pending) : 0n,
+    pendingMaturesInBlocks: body.pendingMaturesInBlocks ?? null,
   };
 }
 
