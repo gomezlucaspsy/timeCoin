@@ -73,6 +73,13 @@ export function importWallet(input: string): WalletKeys {
   return wallet;
 }
 
+/** Generates a brand-new seed-phrase wallet and overwrites whatever was stored. */
+export function createNewSeedWallet(): WalletKeys {
+  const wallet = walletFromSeedPhrase(generateSeedPhrase());
+  persist(wallet);
+  return wallet;
+}
+
 export function buildTransfer(
   wallet: WalletKeys,
   spendableUtxos: Utxo[],

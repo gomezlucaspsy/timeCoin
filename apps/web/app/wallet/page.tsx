@@ -4,7 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import NavTabs from "@/components/NavTabs";
 import QrScanner from "@/components/QrScanner";
-import { loadOrCreateWallet, importWallet, buildTransfer, type WalletKeys } from "@/lib/timecoin/wallet";
+import {
+  loadOrCreateWallet,
+  importWallet,
+  createNewSeedWallet,
+  buildTransfer,
+  type WalletKeys,
+} from "@/lib/timecoin/wallet";
 import { getStatus, getBalance, getUtxos, submitTransaction, mineBlock, type NodeStatus } from "@/lib/timecoin/client";
 import { formatUnits } from "@/lib/timecoin/format";
 
@@ -110,6 +116,18 @@ export default function WalletPage() {
     }
   }
 
+  function handleCreateNew() {
+    if (wallet?.address) {
+      const ok = window.confirm(
+        "Esto reemplaza la wallet actual por una nueva con frase de respaldo. Si tenía saldo, vas a necesitar transferirlo antes o vas a perder el acceso. ¿Continuar?",
+      );
+      if (!ok) return;
+    }
+    const w = createNewSeedWallet();
+    setWallet(w);
+    setBalance(null);
+  }
+
   async function copyAddress() {
     if (!wallet?.address) return;
     await navigator.clipboard.writeText(wallet.address);
@@ -166,9 +184,16 @@ export default function WalletPage() {
 
         {wallet && !wallet.seedPhrase && (
           <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-            Esta wallet no tiene frase de respaldo (se creó con el sistema anterior). Para no
-            arriesgarte a perder el acceso, considerá crear una wallet nueva más abajo y transferirle
-            el saldo.
+            <p>
+              Esta wallet no tiene frase de respaldo (se creó con el sistema anterior). Para no
+              arriesgarte a perder el acceso, creá una wallet nueva y transferile el saldo.
+            </p>
+            <button
+              onClick={handleCreateNew}
+              className="mt-3 rounded-full border border-amber-400 px-4 py-1.5 text-xs font-medium hover:bg-amber-100 dark:border-amber-800 dark:hover:bg-amber-900"
+            >
+              Crear wallet nueva
+            </button>
           </div>
         )}
 
