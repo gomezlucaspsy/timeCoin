@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import NavTabs from "@/components/NavTabs";
+import DeleteListingButton from "@/components/DeleteListingButton";
 import { getListingById } from "@/lib/listings/queries";
 import { formatHours } from "@/lib/listings/format";
 
@@ -9,10 +11,13 @@ export default async function ListingPage(
 ) {
   const { id } = await props.params;
   const searchParams = await props.searchParams;
+  const { userId } = await auth();
   const listing = await getListingById(id);
   if (!listing) notFound();
 
   const justCreated = searchParams?.created === "1";
+  const justUpdated = searchParams?.updated === "1";
+  const isOwner = userId === listing.sellerId;
   const showArs = listing.paymentMode !== "timecoin";
   const showHours = listing.paymentMode !== "cash";
 
@@ -29,6 +34,11 @@ export default async function ListingPage(
         {justCreated && (
           <p className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
             ¡Tu artículo ya está publicado!
+          </p>
+        )}
+        {justUpdated && (
+          <p className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+            Los cambios se guardaron.
           </p>
         )}
 
@@ -70,12 +80,24 @@ export default async function ListingPage(
           {listing.description}
         </p>
 
-        <Link
-          href="/sell"
-          className="mt-10 inline-flex h-11 items-center justify-center rounded-full border border-black/[.08] px-6 text-sm font-medium hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-        >
-          Publicar otro artículo
-        </Link>
+        {isOwner ? (
+          <div className="mt-10 flex flex-wrap gap-3">
+            <Link
+              href={`/listings/${listing.id}/edit`}
+              className="inline-flex h-11 items-center justify-center rounded-full bg-foreground px-6 text-sm font-medium text-background hover:bg-[#383838] dark:hover:bg-[#ccc]"
+            >
+              Editar artículo
+            </Link>
+            <DeleteListingButton listingId={listing.id} />
+          </div>
+        ) : (
+          <Link
+            href="/sell"
+            className="mt-10 inline-flex h-11 items-center justify-center rounded-full border border-black/[.08] px-6 text-sm font-medium hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+          >
+            Publicar otro artículo
+          </Link>
+        )}
       </main>
     </div>
   );
