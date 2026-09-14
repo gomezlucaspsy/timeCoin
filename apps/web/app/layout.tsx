@@ -16,7 +16,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "TimeCoin",
-  description: "Marketplace P2P con TimeCoin como moneda interna",
+  description:
+    "Marketplace P2P con TimeCoin, una moneda minada por prueba de trabajo al estilo Bitcoin",
   manifest: "/manifest.json",
   icons: {
     icon: "/icons/icon.svg",

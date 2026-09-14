@@ -1,7 +1,7 @@
 {
   "name": "TimeCoin",
   "short_name": "TimeCoin",
-  "description": "Marketplace P2P donde tu tiempo también es moneda.",
+  "description": "Marketplace P2P con TimeCoin, minada por prueba de trabajo al estilo Bitcoin.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
