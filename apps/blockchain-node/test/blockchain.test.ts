@@ -95,6 +95,23 @@ describe("Blockchain (devnet)", () => {
     void nextTemplate; // sanity: template generation didn't throw either
   });
 
+  it("resets to minimum difficulty if no block lands within 2x the target spacing (testnet-style anti-stall)", () => {
+    const params = getParams("devnet");
+    const interval = params.difficultyAdjustmentIntervalBlocks;
+
+    for (let i = 0; i < interval; i++) {
+      chain.mineNextBlock(createWallet().address, 5_000_000);
+    }
+    const scheduled = chain.currentDifficulty();
+    expect(scheduled).not.toBe(params.initialDifficulty); // retarget actually moved it
+
+    const stalledTimestamp = chain.tip.header.timestamp + (2 * params.targetBlockTimeSeconds + 1) * 1000;
+    expect(chain.nextDifficulty(stalledTimestamp)).toBe(params.initialDifficulty);
+
+    const onTimeTimestamp = chain.tip.header.timestamp + 1000;
+    expect(chain.nextDifficulty(onTimeTimestamp)).toBe(scheduled);
+  });
+
   it("rejects a coinbase that pays out more than reward + fees", () => {
     const attacker = createWallet();
     const { template, transactions, target } = chain.prepareBlockTemplate(attacker.address);

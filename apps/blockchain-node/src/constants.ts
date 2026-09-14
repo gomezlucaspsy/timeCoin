@@ -25,6 +25,13 @@ export interface ProtocolParams {
   readonly coinbaseMaturityBlocks: number;
   /** The target for difficulty 1 on this network — see MAX_TARGET doc for why devnet differs from mainnet. */
   readonly maxTarget: bigint;
+  /**
+   * Bitcoin testnet's anti-stall rule: if no block lands within 2x the target
+   * spacing, the next block may be mined at minimum difficulty regardless of
+   * the scheduled retarget. Keeps a low-hashrate test network from freezing.
+   * Real Bitcoin mainnet has no such exception.
+   */
+  readonly allowMinDifficultyOnStall: boolean;
 }
 
 /**
@@ -49,6 +56,7 @@ const MAINNET: ProtocolParams = {
   maxDifficultyAdjustmentFactor: 4,
   coinbaseMaturityBlocks: 100,
   maxTarget: MAINNET_MAX_TARGET,
+  allowMinDifficultyOnStall: false,
 };
 
 // Devnet: identical curve shape (halving, retarget, 21M cap), compressed ~1000x
@@ -64,6 +72,7 @@ const DEVNET: ProtocolParams = {
   maxDifficultyAdjustmentFactor: 4,
   coinbaseMaturityBlocks: 5,
   maxTarget: DEVNET_MAX_TARGET,
+  allowMinDifficultyOnStall: true,
 };
 
 export const NETWORKS: Record<Network, ProtocolParams> = {
