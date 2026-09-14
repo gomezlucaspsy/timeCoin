@@ -90,10 +90,10 @@ export async function createListing(
       category,
       paymentMode,
       priceArs: priceArs ?? null,
-      priceHours: priceHours !== null ? priceHours.toFixed(2) : null,
+      priceHours: priceHours !== null ? priceHours.toFixed(8) : null,
       images: uploaded.map((blob) => blob.url),
     })
     .returning({ id: listings.id });
 
-  redirect(`/listings/${listing.id}`);
+  redirect(`/listings/${listing.id}?created=1`);
 }

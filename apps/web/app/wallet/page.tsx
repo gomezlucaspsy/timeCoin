@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import NavTabs from "@/components/NavTabs";
 import { loadOrCreateWallet, importWallet, buildTransfer, type WalletKeys } from "@/lib/timecoin/wallet";
 import { getStatus, getBalance, getUtxos, submitTransaction, mineBlock, type NodeStatus } from "@/lib/timecoin/client";
 import { formatUnits } from "@/lib/timecoin/format";
@@ -112,10 +113,11 @@ export default function WalletPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 font-sans dark:bg-black">
-      <header className="flex items-center justify-between border-b border-black/[.08] px-6 py-4 dark:border-white/[.08]">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[.08] px-6 py-4 dark:border-white/[.08]">
         <Link href="/" className="text-lg font-semibold tracking-tight">
           TimeCoin
         </Link>
+        <NavTabs />
         <span className="text-sm text-zinc-500 dark:text-zinc-400">
           {status ? `${status.network} · bloque ${status.height}` : "conectando…"}
         </span>

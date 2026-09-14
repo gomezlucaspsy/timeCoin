@@ -30,7 +30,7 @@ export const listings = pgTable("listings", {
   category: text("category").notNull(),
   paymentMode: paymentModeEnum("payment_mode").notNull().default("cash"),
   priceArs: integer("price_ars"), // pesos argentinos, null si no acepta cash
-  priceHours: numeric("price_hours", { precision: 10, scale: 2 }), // horas TimeCoin, null si no acepta timecoin
+  priceHours: numeric("price_hours", { precision: 18, scale: 8 }), // horas TimeCoin, null si no acepta timecoin (8 decimales, igual granularidad que un satoshi)
   images: text("images").array().notNull().default([]),
   status: listingStatusEnum("status").notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true })

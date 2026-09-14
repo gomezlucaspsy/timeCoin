@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import NavTabs from "@/components/NavTabs";
 
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 font-sans dark:bg-black">
-      <header className="flex items-center justify-between border-b border-black/[.08] px-6 py-4 dark:border-white/[.08]">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[.08] px-6 py-4 dark:border-white/[.08]">
         <span className="text-lg font-semibold tracking-tight">TimeCoin</span>
+        <NavTabs />
         <div className="flex items-center gap-3">
           <Show when="signed-out">
             <SignInButton>

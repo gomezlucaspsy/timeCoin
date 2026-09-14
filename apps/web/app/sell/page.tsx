@@ -1,4 +1,5 @@
 import Link from "next/link";
+import NavTabs from "@/components/NavTabs";
 import SellForm from "./SellForm";
 
 export const metadata = {
@@ -8,11 +9,11 @@ export const metadata = {
 export default function SellPage() {
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 font-sans dark:bg-black">
-      <header className="flex items-center gap-4 border-b border-black/[.08] px-6 py-4 dark:border-white/[.08]">
-        <Link href="/" className="text-sm font-medium hover:underline">
-          ← TimeCoin
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[.08] px-6 py-4 dark:border-white/[.08]">
+        <Link href="/" className="text-lg font-semibold tracking-tight">
+          TimeCoin
         </Link>
-        <span className="text-sm text-zinc-500">Publicar artículo</span>
+        <NavTabs />
       </header>
 
       <main className="mx-auto w-full max-w-xl flex-1 px-6 py-10">

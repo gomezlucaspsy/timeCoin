@@ -1,29 +1,36 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import NavTabs from "@/components/NavTabs";
 import { getListingById } from "@/lib/listings/queries";
+import { formatHours } from "@/lib/listings/format";
 
 export default async function ListingPage(
   props: PageProps<"/listings/[id]">,
 ) {
   const { id } = await props.params;
+  const searchParams = await props.searchParams;
   const listing = await getListingById(id);
   if (!listing) notFound();
 
+  const justCreated = searchParams?.created === "1";
   const showArs = listing.paymentMode !== "timecoin";
   const showHours = listing.paymentMode !== "cash";
 
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 font-sans dark:bg-black">
-      <header className="flex items-center gap-4 border-b border-black/[.08] px-6 py-4 dark:border-white/[.08]">
-        <Link href="/" className="text-sm font-medium hover:underline">
-          ← TimeCoin
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[.08] px-6 py-4 dark:border-white/[.08]">
+        <Link href="/" className="text-lg font-semibold tracking-tight">
+          TimeCoin
         </Link>
+        <NavTabs />
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-        <p className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-          ¡Tu artículo ya está publicado!
-        </p>
+        {justCreated && (
+          <p className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+            ¡Tu artículo ya está publicado!
+          </p>
+        )}
 
         {listing.images.length > 0 && (
           <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -54,7 +61,7 @@ export default async function ListingPage(
           )}
           {showHours && listing.priceHours != null && (
             <span className="rounded-full border border-foreground px-4 py-1.5 text-sm font-medium">
-              {Number(listing.priceHours)} h TimeCoin
+              {formatHours(listing.priceHours)} h TimeCoin
             </span>
           )}
         </div>

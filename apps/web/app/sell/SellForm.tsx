@@ -136,12 +136,16 @@ export default function SellForm() {
               id="priceHours"
               name="priceHours"
               type="number"
-              min={0.5}
-              step={0.5}
+              min={0.00000001}
+              step={0.00000001}
               required
               placeholder="3"
               className="rounded-lg border border-black/[.08] bg-transparent px-3 py-2 text-sm outline-none focus:border-black/30 dark:border-white/[.145] dark:focus:border-white/40"
             />
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Podés usar fracciones muy chicas (como los satoshis en
+              Bitcoin), no hace falta redondear a medias horas.
+            </p>
           </div>
         )}
       </div>
