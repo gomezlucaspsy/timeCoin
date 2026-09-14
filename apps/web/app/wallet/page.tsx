@@ -11,7 +11,14 @@ import {
   buildTransfer,
   type WalletKeys,
 } from "@/lib/timecoin/wallet";
-import { getStatus, getBalance, getUtxos, submitTransaction, mineBlock, type NodeStatus } from "@/lib/timecoin/client";
+import {
+  getStatus,
+  getBalanceInfo,
+  getUtxos,
+  submitTransaction,
+  mineBlock,
+  type NodeStatus,
+} from "@/lib/timecoin/client";
 import { formatUnits } from "@/lib/timecoin/format";
 
 export default function WalletPage() {
@@ -20,6 +27,8 @@ export default function WalletPage() {
   );
   const [status, setStatus] = useState<NodeStatus | null>(null);
   const [balance, setBalance] = useState<bigint | null>(null);
+  const [pending, setPending] = useState<bigint | null>(null);
+  const [pendingMaturesInBlocks, setPendingMaturesInBlocks] = useState<number | null>(null);
   const [nodeError, setNodeError] = useState<string | null>(null);
 
   const [mining, setMining] = useState(false);
@@ -46,8 +55,10 @@ export default function WalletPage() {
       setStatus(s);
       setNodeError(null);
       if (wallet?.address) {
-        const b = await getBalance(wallet.address);
-        setBalance(b);
+        const b = await getBalanceInfo(wallet.address);
+        setBalance(b.spendable);
+        setPending(b.pending);
+        setPendingMaturesInBlocks(b.pendingMaturesInBlocks);
       }
     } catch (err) {
       setNodeError(
@@ -224,6 +235,15 @@ export default function WalletPage() {
                 {balance !== null ? formatUnits(balance, unitsPerCoin) : "…"}{" "}
                 <span className="text-lg font-normal text-zinc-500 dark:text-zinc-400">TIME</span>
               </p>
+              {pending !== null && pending > 0n && (
+                <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
+                  + {formatUnits(pending, unitsPerCoin)} TIME pendiente
+                  {pendingMaturesInBlocks !== null && (
+                    <> — se habilita en {pendingMaturesInBlocks} bloque{pendingMaturesInBlocks === 1 ? "" : "s"} más</>
+                  )}
+                  . Las recompensas de minado tardan unos bloques en poder gastarse (igual que en Bitcoin).
+                </p>
+              )}
             </div>
           </section>
         )}

@@ -128,6 +128,21 @@ export class Blockchain {
     return total;
   }
 
+  /** Mined rewards not yet spendable (coinbase maturity), so wallets can show "pending" instead of a silent 0. */
+  getPendingBalance(address: string): { amount: bigint; maturesInBlocks: number | null } {
+    let amount = 0n;
+    let maturesInBlocks: number | null = null;
+    for (const utxo of this.utxoSet.values()) {
+      if (utxo.address !== address || !utxo.isCoinbase) continue;
+      const confirmations = this.height - utxo.blockHeight;
+      if (confirmations >= this.params.coinbaseMaturityBlocks) continue;
+      amount += utxo.amount;
+      const remaining = this.params.coinbaseMaturityBlocks - confirmations;
+      if (maturesInBlocks === null || remaining < maturesInBlocks) maturesInBlocks = remaining;
+    }
+    return { amount, maturesInBlocks };
+  }
+
   getSpendableUtxos(address: string): Array<UtxoEntry & UtxoKey> {
     const result: Array<UtxoEntry & UtxoKey> = [];
     for (const [key, utxo] of this.utxoSet.entries()) {

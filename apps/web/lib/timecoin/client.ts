@@ -45,6 +45,24 @@ export async function getBalance(address: string): Promise<bigint> {
   return BigInt(body.balance);
 }
 
+export interface BalanceInfo {
+  spendable: bigint;
+  /** Mined rewards still locked behind coinbase maturity — not yet spendable. */
+  pending: bigint;
+  pendingMaturesInBlocks: number | null;
+}
+
+export async function getBalanceInfo(address: string): Promise<BalanceInfo> {
+  const body = await request<{ balance: string; pending: string; pendingMaturesInBlocks: number | null }>(
+    `/balance/${address}`,
+  );
+  return {
+    spendable: BigInt(body.balance),
+    pending: BigInt(body.pending),
+    pendingMaturesInBlocks: body.pendingMaturesInBlocks,
+  };
+}
+
 export async function getUtxos(address: string): Promise<Utxo[]> {
   const body = await request<{ utxos: Array<Omit<Utxo, "amount"> & { amount: string }> }>(`/utxos/${address}`);
   return body.utxos.map((u) => ({ ...u, amount: BigInt(u.amount) }));
