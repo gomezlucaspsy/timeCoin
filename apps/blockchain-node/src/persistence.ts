@@ -1,18 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type { Block } from "./block.js";
-
-// bigint amounts are serialized as `${n}n` strings so JSON round-trips exactly.
-function replacer(_key: string, value: unknown): unknown {
-  return typeof value === "bigint" ? `${value.toString()}n` : value;
-}
-
-function reviver(_key: string, value: unknown): unknown {
-  if (typeof value === "string" && /^-?\d+n$/.test(value)) {
-    return BigInt(value.slice(0, -1));
-  }
-  return value;
-}
+import { bigintReplacer as replacer, bigintReviver as reviver } from "./serialization.js";
 
 export interface ChainSnapshot {
   network: string;

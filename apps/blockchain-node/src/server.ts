@@ -4,9 +4,15 @@ import { Blockchain, blockReward } from "./blockchain.js";
 import { saveSnapshot, loadSnapshot } from "./persistence.js";
 import { getNetwork, getParams } from "./constants.js";
 import { isValidAddress } from "./crypto.js";
+import { P2PNetwork } from "./p2p/network.js";
 import type { Transaction } from "./transaction.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
+const P2P_PORT = Number(process.env.TIMECOIN_P2P_PORT ?? 3002);
+const SEED_PEERS = (process.env.TIMECOIN_PEERS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 const SNAPSHOT_PATH =
   process.env.TIMECOIN_DATA_PATH ?? fileURLToPath(new URL("../data/chain.json", import.meta.url));
 const AUTOMINE_INTERVAL_MS = Number(process.env.TIMECOIN_AUTOMINE_MS ?? 0); // 0 = disabled
@@ -26,6 +32,14 @@ if (existing && existing.network === network && existing.chain.length > 1) {
 function persist(): void {
   saveSnapshot(SNAPSHOT_PATH, { network, chain: chain.chain });
 }
+
+const p2p = new P2PNetwork(chain, {
+  port: P2P_PORT,
+  seedPeers: SEED_PEERS,
+  onChainChanged: persist,
+  log: (message) => console.log(`[p2p] ${message}`),
+});
+p2p.start();
 
 function send(res: ServerResponse, status: number, body: unknown): void {
   const json = JSON.stringify(body, (_k, v) => (typeof v === "bigint" ? v.toString() : v), 2);
@@ -64,6 +78,7 @@ function statusPayload() {
     halvingIntervalBlocks: params.halvingIntervalBlocks,
     targetBlockTimeSeconds: params.targetBlockTimeSeconds,
     mempoolSize: chain.mempool.length,
+    peerCount: p2p.peerCount,
   };
 }
 
@@ -114,6 +129,11 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && parts[0] === "peers") {
+      send(res, 200, { peers: p2p.peerSummaries() });
+      return;
+    }
+
     if (req.method === "POST" && parts[0] === "tx") {
       const body = (await readBody(req)) as Partial<Transaction>;
       if (!body.inputs || !body.outputs || !body.id) {
@@ -129,6 +149,7 @@ const server = createServer(async (req, res) => {
       const result = chain.submitTransaction(tx);
       if (!result.accepted) return send(res, 400, { error: result.reason });
       persist();
+      p2p.broadcastTx(tx);
       send(res, 202, { accepted: true, txId: tx.id });
       return;
     }
@@ -144,6 +165,7 @@ const server = createServer(async (req, res) => {
         return send(res, 408, { error: "No block found within maxAttempts, try again" });
       }
       persist();
+      p2p.broadcastBlock(block);
       send(res, 200, { block });
       return;
     }
@@ -168,6 +190,7 @@ if (AUTOMINE_INTERVAL_MS > 0) {
       const block = chain.mineNextBlock(automineAddress, 2_000_000);
       if (block) {
         persist();
+        p2p.broadcastBlock(block);
         console.log(`Automined block ${block.header.height} (${chain.mempool.length} pending tx)`);
       }
     }, AUTOMINE_INTERVAL_MS);
