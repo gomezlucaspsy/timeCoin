@@ -1,0 +1,39 @@
+language: "es-ES"
+
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/target/**"
+    - "!**/dist/**"
+    - "!**/*.lock"
+    - "!**/package-lock.json"
+    - "!**/*.pdf"
+  path_instructions:
+    - path: "apps/blockchain-node/**"
+      instructions: >
+        Este es un clon real de Bitcoin (PoW, UTXO, secp256k1). Priorizar en la review:
+        validación de firmas y de montos (sin overflow/underflow en bigint),
+        manejo correcto de la dificultad y reorgs de cadena, ausencia de rate limiting
+        o validación de input en los endpoints HTTP (/tx, /mine), y cualquier lugar
+        donde una clave privada podría tocar el servidor en vez de quedarse en el cliente.
+    - path: "apps/web/**"
+      instructions: >
+        App Next.js con Clerk para auth. Señalar rutas protegidas mal configuradas,
+        uso de <SignedIn>/<SignedOut>/<Protect> (deprecado en Clerk Core 3, debe ser
+        <Show when="signed-in">), y cualquier auth.protect() sin redirectToSignIn().
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  learnings:
+    scope: auto
